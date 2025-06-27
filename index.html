@@ -3,6 +3,8 @@
 <head>
   <meta charset="UTF-8"/>
   <meta name="viewport" content="width=device-width,initial-scale=1.0"/>
+  <meta http-equiv="Content-Security-Policy"
+        content="default-src 'self'; script-src 'self'; style-src 'self';">
   <title>來速咖啡即時抽獎</title>
   <style>
     body {
@@ -23,19 +25,9 @@
       width: 100%;
       text-align: center;
     }
-    .result-box h1 {
-      font-size: 2em;
-      margin-bottom: 10px;
-    }
-    .result-box .time {
-      font-size: 0.9em;
-      color: #555;
-      margin-bottom: 20px;
-    }
-    .result-box p {
-      font-size: 1.2em;
-      margin: 10px 0;
-    }
+    .result-box h1 { font-size: 2em; margin-bottom: 10px; }
+    .result-box .time { font-size: 0.9em; color: #555; margin-bottom: 20px; }
+    .result-box p { font-size: 1.2em; margin: 10px 0; }
     .note {
       font-size: 1em;
       color: #8a2b06;
@@ -52,54 +44,73 @@
       font-size: 1.1em;
       text-decoration: none;
     }
-    .btn:hover {
-      background: #5a3f2a;
+    .btn:hover { background: #5a3f2a; }
+    .already {
+      font-size: 1em;
+      color: #333;
+      margin-bottom: 20px;
     }
   </style>
 </head>
 <body>
 
-  <div class="result-box" id="resultBox">
-    <!-- 中獎結果與時間會由 JavaScript 動態填入這裡 -->
-  </div>
-
+  <div class="result-box" id="resultBox"></div>
   <div class="note">
     請先<span style="font-weight:bold;">截圖</span>上述結果，再點擊下方按鈕填寫表單。<br>
     （至加油站兌換咖啡乙杯，請出示之前咖啡消費明細或發票）
   </div>
+  <div id="already" class="already"></div>
 
   <script>
-    // —————— 請替換這兩項 ——————
+    // —— 請替換這兩項 —— 
     const formBase = "https://docs.google.com/forms/d/e/1FAIpQLSfZNiHHdxGeqTfiOMAmvnGNsU-lKiuZ65KjAgO0eeL27GnjZg/viewform";
-    const entryKey = "entry.1234567890"; // ← 換成你的正確 entry ID
-    // ————————————————————————
+    const entryKey = "entry.1234567890"; // ← 換成你的 entry ID
+    // ————————————————
 
-    const isWinner = Math.random() < 0.2; // 20% 中獎率，可自行調整
-    const now = new Date();
-    const pad = n => String(n).padStart(2, '0');
-    const timeStr = `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ` +
-                    `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+    // 嘗試從 localStorage 取得先前結果
+    let data = null;
+    try {
+      data = JSON.parse(localStorage.getItem("lotteryData"));
+    } catch(e) { /* ignore */ }
 
+    // 如果沒記錄過，就產生一次並存下來
+    if (!data) {
+      const isWinner = Math.random() < 0.2; // 20% 機率
+      const now = new Date();
+      const pad = n => String(n).padStart(2, "0");
+      const timeStr = 
+        `${now.getFullYear()}/${pad(now.getMonth()+1)}/${pad(now.getDate())} ` +
+        `${pad(now.getHours())}:${pad(now.getMinutes())}:${pad(now.getSeconds())}`;
+      data = { isWinner, timeStr };
+      localStorage.setItem("lotteryData", JSON.stringify(data));
+    } else {
+      // 已掃描過
+      document.getElementById("already").textContent = "※ 您已經抽過獎，結果如下：";
+    }
+
+    // 顯示結果
     const box = document.getElementById("resultBox");
-    if (isWinner) {
+    if (data.isWinner) {
       box.innerHTML = `
         <h1>🎉 恭喜你中獎了！</h1>
-        <div class="time">開獎時間：${timeStr}</div>
+        <div class="time">開獎時間：${data.timeStr}</div>
         <p>填寫表單即可兌換免費咖啡乙杯</p>`;
     } else {
       box.innerHTML = `
         <h1>😢 很可惜這次沒中！</h1>
-        <div class="time">開獎時間：${timeStr}</div>
+        <div class="time">開獎時間：${data.timeStr}</div>
         <p>填寫表單可獲得中杯美式10元折價券</p>`;
     }
 
+    // 建立填表按鈕
     const btn = document.createElement("a");
     btn.className = "btn";
     btn.textContent = "👉 點我填表單";
-    btn.href = `${formBase}?${entryKey}=${isWinner ? "中獎" : "未中"}`;
+    btn.href = `${formBase}?${entryKey}=${data.isWinner ? "中獎" : "未中"}`;
     btn.target = "_blank";
     document.body.appendChild(btn);
   </script>
 
 </body>
 </html>
+
